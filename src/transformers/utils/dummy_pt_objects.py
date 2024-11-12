@@ -5689,6 +5689,13 @@ class MambaForCausalLM(metaclass=DummyObject):
         requires_backends(self, ["torch"])
 
 
+class MambaForMaskedLM(metaclass=DummyObject):
+    _backends = ["torch"]
+
+    def __init__(self, *args, **kwargs):
+        requires_backends(self, ["torch"])
+
+
 class MambaModel(metaclass=DummyObject):
     _backends = ["torch"]
 
@@ -5704,6 +5711,13 @@ class MambaPreTrainedModel(metaclass=DummyObject):
 
 
 class Mamba2ForCausalLM(metaclass=DummyObject):
+    _backends = ["torch"]
+
+    def __init__(self, *args, **kwargs):
+        requires_backends(self, ["torch"])
+
+
+class Mamba2ForMaskedLM(metaclass=DummyObject):
     _backends = ["torch"]
 
     def __init__(self, *args, **kwargs):

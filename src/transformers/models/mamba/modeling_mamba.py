@@ -488,6 +488,34 @@ class MambaCausalLMOutput(ModelOutput):
     hidden_states: Optional[Tuple[torch.FloatTensor]] = None
 
 
+@dataclass
+class MambaMaskedLMOutput(ModelOutput):
+    """
+    Base class for masked language model outputs.
+
+    Args:
+        loss (`torch.FloatTensor` of shape `(1,)`, *optional*, returned when `labels` is provided):
+            Language modeling loss (for masked token prediction).
+        logits (`torch.FloatTensor` of shape `(batch_size, sequence_length, config.vocab_size)`):
+            Prediction scores of the language modeling head (scores for each masked token before SoftMax).
+        cache_params (`MambaCache`):
+            The state of the model at the last time step. Can be used in a forward method with the next `input_ids` to
+            avoid providing the old `input_ids`.
+
+            Includes both the State space model state matrices after the selective scan, and the Convolutional states.
+        hidden_states (`tuple(torch.FloatTensor)`, *optional*, returned when `output_hidden_states=True` is passed or when `config.output_hidden_states=True`):
+            Tuple of `torch.FloatTensor` (one for the output of the embeddings, if the model has an embedding layer, +
+            one for the output of each layer) of shape `(batch_size, sequence_length, hidden_size)`.
+
+            Hidden-states of the model at the output of each layer plus the optional initial embedding outputs.
+    """
+
+    loss: Optional[torch.FloatTensor] = None
+    logits: Optional[torch.FloatTensor] = None
+    cache_params: Optional[MambaCache] = None
+    hidden_states: Optional[Tuple[torch.FloatTensor, ...]] = None
+
+
 MAMBA_START_DOCSTRING = r"""
 
     This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
@@ -805,5 +833,85 @@ class MambaForCausalLM(MambaPreTrainedModel, GenerationMixin):
             loss=loss,
             logits=logits,
             cache_params=mamba_outputs.cache_params,
+            hidden_states=mamba_outputs.hidden_states,
+        )
+
+
+@add_start_docstrings(
+    """
+    The MAMBA Model transformer with a language modeling head on top (linear layer with weights not tied to the input
+    embeddings).
+    """,
+    MAMBA_START_DOCSTRING,
+)
+class MambaForMaskedLM(MambaPreTrainedModel, GenerationMixin):
+    _tied_weights_keys = []
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.backbone = MambaModel(config)
+        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+        # Initialize weights and apply final processing
+        self.post_init()
+
+    def get_output_embeddings(self):
+        return self.lm_head
+
+    def set_output_embeddings(self, new_embeddings):
+        self.lm_head = new_embeddings
+
+    def get_input_embeddings(self):
+        return self.backbone.get_input_embeddings()
+
+    def set_input_embeddings(self, new_embeddings):
+        return self.backbone.set_input_embeddings(new_embeddings)
+
+    @add_start_docstrings_to_model_forward(MAMBA_INPUTS_DOCSTRING)
+    def forward(
+        self,
+        input_ids: Optional[torch.LongTensor] = None,
+        inputs_embeds: Optional[torch.FloatTensor] = None,
+        labels: Optional[torch.LongTensor] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
+        attention_mask: Optional[torch.Tensor] = None,
+        **kwargs,
+    ) -> Union[Tuple, MambaMaskedLMOutput]:
+        r"""
+        labels (`torch.LongTensor` of shape `(batch_size, sequence_length)`, *optional*):
+            Labels for masked language modeling.
+            Indices are selected in `[-100, 0, ..., config.vocab_size]`. All labels set to `-100`
+            are unmasked, so the masked language modeling loss is only computed for labels in
+            `[0, ..., config.vocab_size]` i.e. the masked labels.
+        """
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
+        mamba_outputs = self.backbone(
+            input_ids,
+            inputs_embeds=inputs_embeds,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+            attention_mask=attention_mask,
+        )
+        hidden_states = mamba_outputs[0]
+
+        logits = self.lm_head(hidden_states.to(self.lm_head.weight.dtype)).float()
+
+        masked_lm_loss = None
+        if labels is not None:
+            # Move labels to the correct device
+            labels = labels.to(logits.device)
+
+            # Calculate masked token loss
+            loss_fct = CrossEntropyLoss()  # this ignores unmasked tokens
+            masked_lm_loss = loss_fct(logits.view(-1, logits.size(-1)), labels.view(-1))
+
+        if not return_dict:
+            output = (logits,) + mamba_outputs[1:]
+            return ((masked_lm_loss,) + output) if masked_lm_loss is not None else output
+
+        return MambaMaskedLMOutput(
+            loss=masked_lm_loss,
+            logits=logits,
             hidden_states=mamba_outputs.hidden_states,
         )

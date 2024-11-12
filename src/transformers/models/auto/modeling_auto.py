@@ -810,6 +810,8 @@ MODEL_FOR_MASKED_LM_MAPPING_NAMES = OrderedDict(
         ("layoutlm", "LayoutLMForMaskedLM"),
         ("longformer", "LongformerForMaskedLM"),
         ("luke", "LukeForMaskedLM"),
+        ("mamba", "MambaForMaskedLM"),
+        ("mamba2", "Mamba2ForMaskedLM"),
         ("mbart", "MBartForConditionalGeneration"),
         ("mega", "MegaForMaskedLM"),
         ("megatron-bert", "MegatronBertForMaskedLM"),

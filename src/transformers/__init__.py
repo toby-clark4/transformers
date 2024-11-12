@@ -2652,6 +2652,7 @@ else:
     _import_structure["models.mamba"].extend(
         [
             "MambaForCausalLM",
+            "MambaForMaskedLM",
             "MambaModel",
             "MambaPreTrainedModel",
         ]
@@ -2659,6 +2660,7 @@ else:
     _import_structure["models.mamba2"].extend(
         [
             "Mamba2ForCausalLM",
+            "Mamba2ForMaskedLM",
             "Mamba2Model",
             "Mamba2PreTrainedModel",
         ]
@@ -7315,11 +7317,13 @@ if TYPE_CHECKING:
         )
         from .models.mamba import (
             MambaForCausalLM,
+            MambaForMaskedLM,
             MambaModel,
             MambaPreTrainedModel,
         )
         from .models.mamba2 import (
             Mamba2ForCausalLM,
+            Mamba2ForMaskedLM,
             Mamba2Model,
             Mamba2PreTrainedModel,
         )

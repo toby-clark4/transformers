@@ -33,6 +33,7 @@ if is_torch_available():
 
     from transformers import (
         Mamba2ForCausalLM,
+        Mamba2ForMaskedLM,
         Mamba2Model,
     )
     from transformers.models.mamba2.modeling_mamba2 import Mamba2Cache, Mamba2Mixer
@@ -164,8 +165,8 @@ class Mamba2ModelTester:
 )
 @require_torch
 class Mamba2ModelTest(ModelTesterMixin, GenerationTesterMixin, PipelineTesterMixin, unittest.TestCase):
-    all_model_classes = (Mamba2Model, Mamba2ForCausalLM) if is_torch_available() else ()
-    all_generative_model_classes = (Mamba2ForCausalLM,) if is_torch_available() else ()
+    all_model_classes = (Mamba2Model, Mamba2ForCausalLM, Mamba2ForMaskedLM) if is_torch_available() else ()
+    all_generative_model_classes = (Mamba2ForCausalLM, Mamba2ForMaskedLM) if is_torch_available() else ()
     has_attentions = False  # Mamba does not support attentions
     fx_compatible = False  # FIXME let's try to support this @molbap
     test_torchscript = False  # FIXME I think this should be doable @molbap @ArthurZucker
