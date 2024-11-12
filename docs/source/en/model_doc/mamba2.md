@@ -104,3 +104,8 @@ trainer.train()
 
 [[autodoc]] Mamba2ForCausalLM
     - forward
+
+## Mamba2MaskedLMHeadModel
+
+[[autodoc]] Mamba2ForMaskedLM
+    - forward
